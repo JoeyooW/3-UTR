@@ -8,11 +8,11 @@ big_output   <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/filtered_outpu
 input_file <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/TEST_VCF_Both_alphagenome.txt" # input for alphagenome
 final_file <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/final_variant_scores.tsv"
 
-big_is_tsv   <- TRUE                               # TRUE=制表符；FALSE=逗号
+big_is_tsv   <- TRUE                              
 
 db_file      <- "alphagenome.duckdb"
 
-delim_big <- if (big_is_tsv) "\\t" else ","  # 给 DuckDB 的分隔符
+delim_big <- if (big_is_tsv) "\\t" else ","  # DuckDB split
 
 con <- dbConnect(duckdb(), dbdir = db_file)
 
