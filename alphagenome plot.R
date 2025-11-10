@@ -3,9 +3,7 @@ if (!requireNamespace("duckdb", quietly = TRUE)) install.packages("duckdb")
 if (!requireNamespace("DBI", quietly = TRUE)) install.packages("DBI")
 library(DBI); library(duckdb)
 
-# 1) 文件路径（改成你的）
-# big_output: 你要汇总/对齐的结果文件（可以是你前面导出的 filtered_output.tsv，或更早的原始CSV）
-#   - 若是你刚导出的聚合表，用 '\t' 分隔；若是原始 AlphaGenome 导出的文件，多半是逗号CSV
+# 1) setting
 big_output   <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/filtered_output.tsv"  # filtered result
 input_file <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/TEST_VCF_Both_alphagenome.txt" # input for alphagenome
 final_file <- "/Users/JOEY/Desktop/UQ/Research/data/Alphagenome/final_variant_scores.tsv"
@@ -18,7 +16,7 @@ delim_big <- if (big_is_tsv) "\\t" else ","  # 给 DuckDB 的分隔符
 
 con <- dbConnect(duckdb(), dbdir = db_file)
 
-# 2) 直接在 DuckDB 里完成：解析 variant_id -> CHROM,POS,REF,ALT；聚合；与输入左连接；导出
+# 2) DuckDB ： variant_id -> CHROM,POS,REF,ALT；left join
 sql <- sprintf("
 CREATE OR REPLACE TEMP VIEW out_raw AS
 SELECT
@@ -73,7 +71,7 @@ COPY (
 
 dbExecute(con, sql)
 
-# 3) 可选：给点统计反馈（匹配了多少）
+# 3) stat
 stats <- dbGetQuery(con, sprintf("
   WITH T AS (
     SELECT *
@@ -88,7 +86,7 @@ stats <- dbGetQuery(con, sprintf("
 
 dbDisconnect(con, shutdown = TRUE)
 
-cat('✅ 完成！结果已写入:\n', final_file, '\n')
+cat('✅ done:\n', final_file, '\n')
 print(stats)
 
 
@@ -170,16 +168,16 @@ ggplot(final_file, aes(x = INFO, y = max_quant, fill = INFO)) +
 library(ggplot2)
 library(dplyr)
 
-# 定义配色方案
+# color
 colors <- c("Cont" = "cyan", "Dis" = "red")
 
-# 通用绘图函数：绘图 + 输出均值
+# plot
 plot_density <- function(data, variable, log_transform = FALSE, xlab = NULL, title = NULL) {
   
   df <- data %>% select(INFO, all_of(variable)) %>%
     rename(value = all_of(variable))
   
-  # log2 转换（可选）
+  # log2 
   if (log_transform) {
     df <- df %>% mutate(value = log2(value))
     if (is.null(xlab)) xlab <- paste0("log2(", variable, ")")
@@ -187,7 +185,7 @@ plot_density <- function(data, variable, log_transform = FALSE, xlab = NULL, tit
     if (is.null(xlab)) xlab <- variable
   }
   
-  # 计算均值并输出
+  # mean
   means <- df %>%
     group_by(INFO) %>%
     summarise(mean_value = mean(value, na.rm = TRUE),
@@ -199,7 +197,7 @@ plot_density <- function(data, variable, log_transform = FALSE, xlab = NULL, tit
   print(means)
   cat("------------------------------\n")
   
-  # 绘制 density 图
+  # density 
   ggplot(df, aes(x = value, fill = INFO)) +
     geom_density(color = "black", alpha = 0.4, adjust = 1.2) +
     geom_vline(data = means, aes(xintercept = mean_value),
@@ -210,7 +208,7 @@ plot_density <- function(data, variable, log_transform = FALSE, xlab = NULL, tit
           legend.position = "none")
 }
 
-# ====== 绘图并打印均值 ======
+# ====== print ======
 plot_density(final_file, "mean_raw",  TRUE, "log2(mean_raw)",  "AlphaGenome mean raw score distribution")
 plot_density(final_file, "sd_raw",    TRUE, "log2(sd_raw)",    "AlphaGenome sd raw score distribution")
 plot_density(final_file, "range_raw", TRUE, "log2(range_raw)", "AlphaGenome range raw score distribution")
